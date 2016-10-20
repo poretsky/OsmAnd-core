@@ -50,10 +50,7 @@ void printRoad(const char* prefix, SHARED_PTR<RouteSegment> segment) {
 
 // translate into meters
 static double squareRootDist(int x1, int y1, int x2, int y2) {
-	double dy = convert31YToMeters(y1, y2);
-	double dx = convert31XToMeters(x1, x2);
-	return sqrt(dx * dx + dy * dy);
-//		return measuredDist(x1, y1, x2, y2);
+	return squareRootDist31(x1, y1, x2, y2);
 }
 
 
@@ -554,7 +551,8 @@ bool checkIfOppositieSegmentWasVisited(RoutingContext* ctx, bool reverseWaySearc
         SHARED_PTR<RouteSegment> from = !reverseWaySearch ? getParentDiffId(segment) : getParentDiffId(opposite);
         if (checkViaRestrictions(from, to)) {			
 			SHARED_PTR<RouteSegment> frs = SHARED_PTR<RouteSegment>(new RouteSegment(road, segmentPoint));
-			float distStartObstacles = segment->distanceFromStart + calculateTimeWithObstacles(ctx, road, segmentDist , obstaclesTime);
+			float distStartObstacles = segment->distanceFromStart + 
+						calculateTimeWithObstacles(ctx, road, segmentDist, obstaclesTime);
 			frs->parentRoute = segment;
 			frs->parentSegmentEnd = segmentPoint;
 			frs->reverseWaySearch = reverseWaySearch? 1 : -1;
@@ -620,10 +618,9 @@ void processRouteSegment(RoutingContext* ctx, bool reverseWaySearch, SEGMENTS_QU
 			directionAllowed = false;
 			continue;
 		}
-		obstaclesTime += obstacle;
-		
 		bool alreadyVisited = checkIfOppositieSegmentWasVisited(ctx, reverseWaySearch, graphSegments, segment, oppositeSegments,
 				segmentPoint,  segmentDist, obstaclesTime);
+		obstaclesTime += obstacle;
 		if (alreadyVisited) {
 			directionAllowed = false;
 			continue;

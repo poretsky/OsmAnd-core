@@ -21,6 +21,7 @@ TextDrawInfo::TextDrawInfo(std::string itext)
 	: text(itext)
 	, drawOnPath(false)
 	, path(NULL)
+	, icon(NULL)
 	, pathRotate(0)
 	, intersectionMargin(0)
 	, intersectionSizeFactor(1)
@@ -34,7 +35,7 @@ TextDrawInfo::~TextDrawInfo()
 }
 
 IconDrawInfo::IconDrawInfo()
-	: bmp_1(NULL), bmp(NULL), bmp2(NULL), bmp3(NULL), bmp4(NULL), bmp5(NULL),
+	: bmp_1(NULL), bmp(NULL), bmp2(NULL), bmp3(NULL), bmp4(NULL), bmp5(NULL), visible(false),
 	  shield(NULL), intersectionMargin(0), intersectionSizeFactor(1)
 {
 
@@ -42,9 +43,8 @@ IconDrawInfo::IconDrawInfo()
 
 RenderingContext::~RenderingContext()
 {
-	std::vector<TextDrawInfo*>::iterator itTextToDraw;
-	for(itTextToDraw = textToDraw.begin(); itTextToDraw != textToDraw.end(); ++itTextToDraw)
-		delete (*itTextToDraw);
+	textToDraw.clear();
+	iconsToDraw.clear();
 }
 
 bool RenderingContext::interrupted()
@@ -119,27 +119,83 @@ double getPowZoom(float zoom){
 	}
 }
 
-double convert31YToMeters(int y1, int y2) {
-	// translate into meters
-	return (y1 - y2) * 0.01863f;
+double measuredDist31(int x1, int y1, int x2, int y2) {
+  return getDistance(get31LatitudeY(y1),get31LongitudeX(x1), get31LatitudeY(y2), get31LongitudeX(x2));
 }
 
-double convert31XToMeters(int x1, int x2) {
-	// translate into meters
-	return (x1 - x2) * 0.011f;
+double dabs(double d) {
+	if(d < 0) {
+		return -d;
+	} else {
+		return d;
+	}
+}
+
+double coefficientsY[256] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0   
+};	
+double convert31YToMeters(int y1, int y2, int x) {
+	int ind = x >> (31 - 8);
+	if(coefficientsY[ind] == 0) {
+		double md = measuredDist31(x, y1, x, y2);
+		if(md < 10 || y1 == y2) {
+			return md;
+		}
+		coefficientsY[ind] = md / dabs((double)y1 - (double)y2);
+	}
+	// translate into meters 
+	return ((double)y1 - y2) * coefficientsY[ind];
+}
+double coefficientsX[256] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0   
+};	
+
+double convert31XToMeters(int x1, int x2, int y) {
+	int ind = y >> (31 - 8);
+	if(coefficientsX[ind] == 0) {
+		double md = measuredDist31(x1, y, x2, y);
+		if(md < 10  || x1 == x2) {
+			return md;
+		}
+		coefficientsX[ind] = md / dabs((double)x1 - (double)x2);
+	}
+	// translate into meters 
+	return ((double)x1 - x2) * coefficientsX[ind];
 }
 
 
 double calculateProjection31TileMetric(int xA, int yA, int xB, int yB, int xC, int yC) {
 	// Scalar multiplication between (AB, AC)
-	double multiple = convert31XToMeters(xB, xA) * convert31XToMeters(xC, xA) + convert31YToMeters(yB, yA) * convert31YToMeters(yC, yA);
+	double multiple = convert31XToMeters(xB, xA, yA) * convert31XToMeters(xC, xA, yA) + 
+			convert31YToMeters(yB, yA, xA) * convert31YToMeters(yC, yA, xA);
 	return multiple;
 }
 double squareDist31TileMetric(int x1, int y1, int x2, int y2) {
 // translate into meters
-	double dy = convert31YToMeters(y1, y2);
-	double dx = convert31XToMeters(x1, x2);
+	double dy = convert31YToMeters(y1, y2, x2);
+	double dx = convert31XToMeters(x1, x2, y1);
 	return dx * dx + dy * dy;
+}
+
+double squareRootDist31(int x1, int y1, int x2, int y2) {
+// translate into meters
+	double dy = convert31YToMeters(y1, y2, x2);
+	double dx = convert31XToMeters(x1, x2, y1);
+	return sqrt(dx * dx + dy * dy);
 }
 
 

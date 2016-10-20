@@ -53,11 +53,35 @@ extern FontRegistry globalFontRegistry;
 
 
 
+
+struct IconDrawInfo
+{
+	SkBitmap* bmp_1;
+	SkBitmap* bmp;
+	SkBitmap* bmp2;
+	SkBitmap* bmp3;
+	SkBitmap* bmp4;
+	SkBitmap* bmp5;
+	SkBitmap* shield;
+	float x;
+	float y;
+	bool visible;
+	float shiftPx;
+	float shiftPy;
+	int order;
+	int secondOrder;
+	float iconSize;
+	float intersectionMargin;
+	float intersectionSizeFactor;
+
+	IconDrawInfo();
+};
 struct TextDrawInfo {
 	TextDrawInfo(std::string);
 	~TextDrawInfo();
 
 	std::string text;
+	SHARED_PTR<IconDrawInfo> icon;
 
 	SkRect bounds;
 	float centerX;
@@ -85,27 +109,6 @@ struct TextDrawInfo {
 	float intersectionSizeFactor;
 };
 
-struct IconDrawInfo
-{
-	SkBitmap* bmp_1;
-	SkBitmap* bmp;
-	SkBitmap* bmp2;
-	SkBitmap* bmp3;
-	SkBitmap* bmp4;
-	SkBitmap* bmp5;
-	SkBitmap* shield;
-	float x;
-	float y;
-	float shiftPx;
-	float shiftPy;
-	int order;
-	int secondOrder;
-	float iconSize;
-	float intersectionMargin;
-	float intersectionSizeFactor;
-
-	IconDrawInfo();
-};
 
 static const int TILE_SIZE = 256;
 struct RenderingContext
@@ -160,8 +163,8 @@ public :
 	float calcX;
 	float calcY;
 
-	std::vector<TextDrawInfo*> textToDraw;
-	std::vector<IconDrawInfo> iconsToDraw;
+	std::vector<SHARED_PTR<TextDrawInfo>> textToDraw;
+	std::vector<SHARED_PTR<IconDrawInfo>> iconsToDraw;
 	
 	// not expect any shadow
 	int shadowLevelMin;
@@ -334,9 +337,11 @@ double getDistance(double lat1, double lon1, double lat2, double lon2);
 double getPowZoom(float zoom);
 
 double calculateProjection31TileMetric(int xA, int yA, int xB, int yB, int xC, int yC);
+double measuredDist31(int x1, int y1, int x2, int y2); 
 double squareDist31TileMetric(int x1, int y1, int x2, int y2) ;
-double convert31YToMeters(int y1, int y2);
-double convert31XToMeters(int y1, int y2);
+double squareRootDist31(int x1, int y1, int x2, int y2) ;
+double convert31YToMeters(int y1, int y2, int x);
+double convert31XToMeters(int y1, int y2, int y);
 double alignAngleDifference(double diff);
 
 template <typename T> class quad_tree {
